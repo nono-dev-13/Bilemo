@@ -28,7 +28,7 @@ class UserCompanyController extends AbstractController
     }
 
     #[Route('/api/usercompanies/{id}', name: 'detailUserCompanies', methods: ['GET'])]
-    public function getDetailBook(UserCompany $userCompany, SerializerInterface $serializer): JsonResponse 
+    public function getDetailUserCompanies(UserCompany $userCompany, SerializerInterface $serializer): JsonResponse 
     {
         $jsonUserCompany = $serializer->serialize($userCompany, 'json', ['groups' => 'getUserCompany']);
         return new JsonResponse($jsonUserCompany, Response::HTTP_OK, ['accept' => 'json'], true);

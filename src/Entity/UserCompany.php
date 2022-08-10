@@ -5,6 +5,7 @@ namespace App\Entity;
 use App\Repository\UserCompanyRepository;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: UserCompanyRepository::class)]
 class UserCompany
@@ -17,10 +18,14 @@ class UserCompany
 
     #[ORM\Column(length: 255)]
     #[Groups(["getCompany", "getUserCompany"])]
+    #[Assert\NotBlank(message: "Le Nom du UserCompany est obligatoire")]
+    #[Assert\Length(min: 1, max: 255, minMessage: "Le Nom doit faire au moins {{ limit }} caractères", maxMessage: "Le Nom ne peut pas faire plus de {{ limit }} caractères")]
     private ?string $lastname = null;
 
     #[ORM\Column(length: 255)]
     #[Groups(["getCompany", "getUserCompany"])]
+    #[Assert\NotBlank(message: "Le Prénom du UserCompany est obligatoire")]
+    #[Assert\Length(min: 1, max: 255, minMessage: "Le Prénom doit faire au moins {{ limit }} caractères", maxMessage: "Le Prénom ne peut pas faire plus de {{ limit }} caractères")]
     private ?string $firstname = null;
 
     #[ORM\ManyToOne(inversedBy: 'userCompanies')]

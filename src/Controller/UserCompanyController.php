@@ -14,6 +14,7 @@ use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 class UserCompanyController extends AbstractController
 {
@@ -43,17 +44,21 @@ class UserCompanyController extends AbstractController
     }
 
     #[Route('/api/usercompanies', name:"createUserCompanies", methods: ['POST'])]
-    public function createUserCompanies(Request $request,CompanyRepository $companyRepository, SerializerInterface $serializer, EntityManagerInterface $em, UrlGeneratorInterface $urlGenerator): JsonResponse 
+    public function createUserCompanies(Request $request,CompanyRepository $companyRepository, SerializerInterface $serializer, EntityManagerInterface $em, UrlGeneratorInterface $urlGenerator, ValidatorInterface $validatorInterface): JsonResponse 
     {
 
         $UserCompany = $serializer->deserialize($request->getContent(), UserCompany::class, 'json');
 
+        // On vérifie les erreurs
+        $errors = $validatorInterface->validate($UserCompany);
+        if ($errors->count() > 0) {
+            return new JsonResponse($serializer->serialize($errors, 'json'), JsonResponse::HTTP_BAD_REQUEST, [], true);
+        }
+
         // Récupération de l'ensemble des données envoyées sous forme de tableau
         $content = $request->toArray();
-
         // Récupération de l'idCompany. S'il n'est pas défini, alors on met -1 par défaut.
         $idCompany = $content['idCompany'] ?? -1;
-
         // On cherche le userCompany qui correspond et on l'assigne à la company.
         // Si "find" ne trouve pas le userCompany, alors null sera retourné.
         $UserCompany->setCompany($companyRepository->find($idCompany));

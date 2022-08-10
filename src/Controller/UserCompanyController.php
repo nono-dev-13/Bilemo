@@ -12,6 +12,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Component\Serializer\SerializerInterface;
 
 class UserCompanyController extends AbstractController
@@ -65,5 +66,21 @@ class UserCompanyController extends AbstractController
         $location = $urlGenerator->generate('detailUserCompanies', ['id' => $UserCompany->getId()], UrlGeneratorInterface::ABSOLUTE_URL);
 
         return new JsonResponse($jsonUserCompany, Response::HTTP_CREATED, ["Location" => $location], true);
+   }
+
+   #[Route('/api/usercompanies/{id}', name:"updateUserCompanies", methods:['PUT'])]
+    public function updateUserCompanies(Request $request, SerializerInterface $serializer, UserCompany $currentUserCompany, EntityManagerInterface $em, CompanyRepository $companyRepository): JsonResponse 
+    {
+        $updatedUserCompany = $serializer->deserialize($request->getContent(), 
+                UserCompany::class, 
+                'json', 
+                [AbstractNormalizer::OBJECT_TO_POPULATE => $currentUserCompany]);
+        $content = $request->toArray();
+        $idCompany = $content['idCompany'] ?? -1;
+        $updatedUserCompany->setCompany($companyRepository->find($idCompany));
+        
+        $em->persist($updatedUserCompany);
+        $em->flush();
+        return new JsonResponse(null, JsonResponse::HTTP_NO_CONTENT);
    }
 }

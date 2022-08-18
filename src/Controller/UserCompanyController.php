@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Entity\Company;
 use App\Entity\UserCompany;
 use App\Repository\CompanyRepository;
 use App\Repository\UserCompanyRepository;
@@ -19,10 +20,16 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 class UserCompanyController extends AbstractController
 {
     #[Route('/api/usercompanies', name: 'userCompanies', methods: ['GET'])]
-    public function getPhoneList(UserCompanyRepository $userCompanyRepository, SerializerInterface $serializerInterface): JsonResponse
+    public function getPhoneList(UserCompanyRepository $userCompanyRepository,SerializerInterface $serializerInterface, Request $request): JsonResponse
     {
+        /**
+         * récupère l'utilisateur (la company dans ce cas) connecté (via symfony)
+         * @var UserCompany 
+         */
+        $connectedCompagny = $this->getUser();
 
-        $userCompanyList = $userCompanyRepository->findAll();
+        $userCompanyList = $userCompanyRepository->findBy(['company' => $connectedCompagny]);
+         
         $jsonUserCompanyList = $serializerInterface->serialize($userCompanyList, 'json', ['groups' => 'getUserCompany']);
         return new JsonResponse($jsonUserCompanyList, Response::HTTP_OK, [], true);
     }
@@ -30,17 +37,31 @@ class UserCompanyController extends AbstractController
     #[Route('/api/usercompanies/{id}', name: 'detailUserCompanies', methods: ['GET'])]
     public function getDetailUserCompanies(UserCompany $userCompany, SerializerInterface $serializer): JsonResponse 
     {
-        $jsonUserCompany = $serializer->serialize($userCompany, 'json', ['groups' => 'getUserCompany']);
-        return new JsonResponse($jsonUserCompany, Response::HTTP_OK, ['accept' => 'json'], true);
+        $connectedCompagny = $this->getUser();
+        
+        if ($userCompany->getCompany() === $connectedCompagny) {
+            $jsonUserCompany = $serializer->serialize($userCompany, 'json', ['groups' => 'getUserCompany']);
+            return new JsonResponse($jsonUserCompany, Response::HTTP_OK, ['accept' => 'json'], true);
+        } else {
+            return new JsonResponse("Vous n'avez pas le droit d'accéder à cet utilisateur", Response::HTTP_FORBIDDEN, ['accept' => 'json'], false);
+        }
+        
     }
 
     #[Route('/api/usercompanies/{id}', name: 'deleteUserCompanies', methods: ['DELETE'])]
     public function deleteUserCompanies(UserCompany $userCompany, EntityManagerInterface $em): JsonResponse 
     {
-        $em->remove($userCompany);
-        $em->flush();
-
-        return new JsonResponse(null, Response::HTTP_NO_CONTENT);
+        $connectedCompagny = $this->getUser();
+        if ($userCompany->getCompany() === $connectedCompagny) {
+            
+            $em->remove($userCompany);
+            $em->flush();
+    
+            return new JsonResponse(null, Response::HTTP_NO_CONTENT);
+        } else {
+            return new JsonResponse("Vous n'avez pas le droit d'accéder à cet utilisateur", Response::HTTP_FORBIDDEN, ['accept' => 'json'], false);
+        }
+        
     }
 
     #[Route('/api/usercompanies', name:"createUserCompanies", methods: ['POST'])]

@@ -14,25 +14,35 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
-use Symfony\Component\Serializer\SerializerInterface;
+//use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
+use Symfony\Contracts\Cache\ItemInterface;
+use Symfony\Contracts\Cache\TagAwareCacheInterface;
+use JMS\Serializer\SerializationContext;
+use JMS\Serializer\SerializerInterface;
+use Nelmio\ApiDocBundle\Annotation\Model;
+use Nelmio\ApiDocBundle\Annotation\Security;
+use OpenApi\Annotations as OA;
 
 class UserCompanyController extends AbstractController
 {
     #[Route('/api/usercompanies', name: 'userCompanies', methods: ['GET'])]
-    public function getPhoneList(UserCompanyRepository $userCompanyRepository,SerializerInterface $serializerInterface, Request $request): JsonResponse
+    public function getUserList(UserCompanyRepository $userCompanyRepository, SerializerInterface $serializer, Request $request, TagAwareCacheInterface $cache): JsonResponse
     {
-        /**
-         * récupère l'utilisateur (la company dans ce cas) connecté (via symfony)
-         * @var UserCompany 
-         */
-        $connectedCompagny = $this->getUser();
 
-        $userCompanyList = $userCompanyRepository->findBy(['company' => $connectedCompagny]);
-         
-        $jsonUserCompanyList = $serializerInterface->serialize($userCompanyList, 'json', ['groups' => 'getUserCompany']);
-        return new JsonResponse($jsonUserCompanyList, Response::HTTP_OK, [], true);
-    }
+        $idCache = "getUserList";
+        
+        $jsonUserCompany = $cache->get($idCache, function (ItemInterface $item) use ($userCompanyRepository, $serializer) {
+            echo("L'ÉLÉMENT N'EST PAS ENCORE EN CACHE \n");
+            $connectedCompany = $this->getUser();
+            $item->tag("userCompanyCache");
+            $UserCompanyList = $userCompanyRepository->findBy(['company' => $connectedCompany]);
+            $context = SerializationContext::create()->setGroups(['getUserCompany']);
+            return $serializer->serialize($UserCompanyList, 'json', $context);
+        });
+      
+        return new JsonResponse($jsonUserCompany, Response::HTTP_OK, [], true);
+   }
 
     #[Route('/api/usercompanies/{id}', name: 'detailUserCompanies', methods: ['GET'])]
     public function getDetailUserCompanies(UserCompany $userCompany, SerializerInterface $serializer): JsonResponse 
@@ -40,7 +50,8 @@ class UserCompanyController extends AbstractController
         $connectedCompagny = $this->getUser();
         
         if ($userCompany->getCompany() === $connectedCompagny) {
-            $jsonUserCompany = $serializer->serialize($userCompany, 'json', ['groups' => 'getUserCompany']);
+            $context = SerializationContext::create()->setGroups(['getUserCompany']);
+            $jsonUserCompany = $serializer->serialize($userCompany, 'json', $context);
             return new JsonResponse($jsonUserCompany, Response::HTTP_OK, ['accept' => 'json'], true);
         } else {
             return new JsonResponse("Vous n'avez pas le droit d'accéder à cet utilisateur", Response::HTTP_FORBIDDEN, ['accept' => 'json'], false);
@@ -49,11 +60,11 @@ class UserCompanyController extends AbstractController
     }
 
     #[Route('/api/usercompanies/{id}', name: 'deleteUserCompanies', methods: ['DELETE'])]
-    public function deleteUserCompanies(UserCompany $userCompany, EntityManagerInterface $em): JsonResponse 
+    public function deleteUserCompanies(UserCompany $userCompany, EntityManagerInterface $em, TagAwareCacheInterface $tagAwareCacheInterface): JsonResponse 
     {
         $connectedCompagny = $this->getUser();
         if ($userCompany->getCompany() === $connectedCompagny) {
-            
+            $tagAwareCacheInterface->invalidateTags(["userCompanyCache"]);
             $em->remove($userCompany);
             $em->flush();
     
@@ -87,7 +98,8 @@ class UserCompanyController extends AbstractController
         $em->persist($UserCompany);
         $em->flush();
 
-        $jsonUserCompany = $serializer->serialize($UserCompany, 'json', ['groups' => 'getUserCompany']);
+        $context = SerializationContext::create()->setGroups(['getUserCompany']);
+        $jsonUserCompany = $serializer->serialize($UserCompany, 'json', $context);
         
         $location = $urlGenerator->generate('detailUserCompanies', ['id' => $UserCompany->getId()], UrlGeneratorInterface::ABSOLUTE_URL);
 
@@ -95,18 +107,30 @@ class UserCompanyController extends AbstractController
    }
 
    #[Route('/api/usercompanies/{id}', name:"updateUserCompanies", methods:['PUT'])]
-    public function updateUserCompanies(Request $request, SerializerInterface $serializer, UserCompany $currentUserCompany, EntityManagerInterface $em, CompanyRepository $companyRepository): JsonResponse 
+
+   public function updateUserCompanies(Request $request, SerializerInterface $serializer, UserCompany $currentUserCompany, EntityManagerInterface $em, CompanyRepository $companyRepository, ValidatorInterface $validator, TagAwareCacheInterface $cache): JsonResponse 
     {
-        $updatedUserCompany = $serializer->deserialize($request->getContent(), 
-                UserCompany::class, 
-                'json', 
-                [AbstractNormalizer::OBJECT_TO_POPULATE => $currentUserCompany]);
+        $newUserCompany = $serializer->deserialize($request->getContent(), UserCompany::class, 'json');
+        $currentUserCompany->setLastname($newUserCompany->getLastname());
+        $currentUserCompany->setFirstname($newUserCompany->getFirstname());
+
+        // On vérifie les erreurs
+        $errors = $validator->validate($currentUserCompany);
+        if ($errors->count() > 0) {
+            return new JsonResponse($serializer->serialize($errors, 'json'), JsonResponse::HTTP_BAD_REQUEST, [], true);
+        }
+
         $content = $request->toArray();
         $idCompany = $content['idCompany'] ?? -1;
-        $updatedUserCompany->setCompany($companyRepository->find($idCompany));
-        
-        $em->persist($updatedUserCompany);
+    
+        $currentUserCompany->setCompany($companyRepository->find($idCompany));
+
+        $em->persist($currentUserCompany);
         $em->flush();
+
+        // On vide le cache.
+        $cache->invalidateTags(["userCompanyCache"]);
+
         return new JsonResponse(null, JsonResponse::HTTP_NO_CONTENT);
-   }
+    }
 }

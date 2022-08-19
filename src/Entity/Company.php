@@ -31,7 +31,6 @@ class Company implements UserInterface, PasswordAuthenticatedUserInterface
      * @var string The hashed password
      */
     #[ORM\Column]
-    #[Groups(["getCompany", "getUserCompany"])]
     private ?string $password = null;
 
     #[ORM\OneToMany(mappedBy: 'company', targetEntity: UserCompany::class, orphanRemoval: true)]

@@ -48,13 +48,13 @@ class UserCompany
     private ?int $id = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(["getCompany", "getUserCompany"])]
+    #[Groups(["getCompany", "getUserCompany", "createUserCompany"])]
     #[Assert\NotBlank(message: "Le Nom du UserCompany est obligatoire")]
     #[Assert\Length(min: 1, max: 255, minMessage: "Le Nom doit faire au moins {{ limit }} caractères", maxMessage: "Le Nom ne peut pas faire plus de {{ limit }} caractères")]
     private ?string $lastname = null;
 
     #[ORM\Column(length: 255)]
-    #[Groups(["getCompany", "getUserCompany"])]
+    #[Groups(["getCompany", "getUserCompany", "createUserCompany"])]
     #[Assert\NotBlank(message: "Le Prénom du UserCompany est obligatoire")]
     #[Assert\Length(min: 1, max: 255, minMessage: "Le Prénom doit faire au moins {{ limit }} caractères", maxMessage: "Le Prénom ne peut pas faire plus de {{ limit }} caractères")]
     private ?string $firstname = null;

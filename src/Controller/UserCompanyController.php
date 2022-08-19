@@ -24,8 +24,24 @@ use Nelmio\ApiDocBundle\Annotation\Model;
 use Nelmio\ApiDocBundle\Annotation\Security;
 use OpenApi\Annotations as OA;
 
+
 class UserCompanyController extends AbstractController
 {
+    /**
+     * Cette méthode permet de récupérer l'ensemble des UserCompany.
+     *
+     * @OA\Response(
+     *     response=200,
+     *     description="Retourne la liste des userCompany",
+     *     @OA\JsonContent(
+     *        type="array",
+     *        @OA\Items(ref=@Model(type=UserCompany::class, groups={"getUserCompany"}))
+     *     )
+     * )
+     *
+     * @OA\Tag(name="UserCompanies")
+     *
+     */
     #[Route('/api/usercompanies', name: 'userCompanies', methods: ['GET'])]
     public function getUserList(UserCompanyRepository $userCompanyRepository, SerializerInterface $serializer, Request $request, TagAwareCacheInterface $cache): JsonResponse
     {
@@ -42,8 +58,30 @@ class UserCompanyController extends AbstractController
         });
       
         return new JsonResponse($jsonUserCompany, Response::HTTP_OK, [], true);
-   }
+    }
 
+    /**
+     * Cette méthode permet de récupérer un seul des UserCompany.
+     *
+     * @OA\Response(
+     *     response=200,
+     *     description="Retourne un userCompany",
+     *     @OA\JsonContent(
+     *        type="array",
+     *        @OA\Items(ref=@Model(type=UserCompany::class, groups={"getUserCompany"}))
+     *     )
+     * )
+     * @OA\Parameter(
+     *     name="id",
+     *     in="path",
+     *     required=true,
+     *     description="Id of user",
+     *     @OA\Schema(type="integer")
+     * )
+     *
+     * @OA\Tag(name="UserCompanies")
+     *
+     */
     #[Route('/api/usercompanies/{id}', name: 'detailUserCompanies', methods: ['GET'])]
     public function getDetailUserCompanies(UserCompany $userCompany, SerializerInterface $serializer): JsonResponse 
     {
@@ -59,6 +97,28 @@ class UserCompanyController extends AbstractController
         
     }
 
+    /**
+     * Cette méthode permet de supprimer un UserCompany.
+     *
+     * @OA\Response(
+     *     response=200,
+     *     description="Supprimer un UserCompany",
+     *     @OA\JsonContent(
+     *        type="array",
+     *        @OA\Items(ref=@Model(type=UserCompany::class))
+     *     )
+     * )
+     *
+     * @OA\Parameter(
+     *     name="id",
+     *     in="path",
+     *     required=true,
+     *     description="Id of user to delete",
+     *     @OA\Schema(type="integer")
+     * )
+     *
+     * @OA\Tag(name="UserCompanies")
+     */
     #[Route('/api/usercompanies/{id}', name: 'deleteUserCompanies', methods: ['DELETE'])]
     public function deleteUserCompanies(UserCompany $userCompany, EntityManagerInterface $em, TagAwareCacheInterface $tagAwareCacheInterface): JsonResponse 
     {
@@ -75,6 +135,26 @@ class UserCompanyController extends AbstractController
         
     }
 
+    /**
+     * Cette méthode permet de créer un UserCompany.
+     *
+     * @OA\Response(
+     *     response=200,
+     *     description="Creér un UserCompany",
+     *     @OA\JsonContent(
+     *        type="array",
+     *        @OA\Items(ref=@Model(type=UserCompany::class))
+     *     )
+     * )
+     *
+     * @OA\RequestBody(
+     *     description="User to add",
+     *     required=true,
+     *     @Model(type=UserCompany::class, groups={"createUserCompany"})
+     * )
+     *
+     * @OA\Tag(name="UserCompanies")
+     */
     #[Route('/api/usercompanies', name:"createUserCompanies", methods: ['POST'])]
     public function createUserCompanies(Request $request,CompanyRepository $companyRepository, SerializerInterface $serializer, EntityManagerInterface $em, UrlGeneratorInterface $urlGenerator, ValidatorInterface $validatorInterface): JsonResponse 
     {
@@ -86,14 +166,11 @@ class UserCompanyController extends AbstractController
         if ($errors->count() > 0) {
             return new JsonResponse($serializer->serialize($errors, 'json'), JsonResponse::HTTP_BAD_REQUEST, [], true);
         }
-
-        // Récupération de l'ensemble des données envoyées sous forme de tableau
-        $content = $request->toArray();
-        // Récupération de l'idCompany. S'il n'est pas défini, alors on met -1 par défaut.
-        $idCompany = $content['idCompany'] ?? -1;
+        $connectedCompany = $this->getUser();
+        
         // On cherche le userCompany qui correspond et on l'assigne à la company.
         // Si "find" ne trouve pas le userCompany, alors null sera retourné.
-        $UserCompany->setCompany($companyRepository->find($idCompany));
+        $UserCompany->setCompany($connectedCompany);
 
         $em->persist($UserCompany);
         $em->flush();
@@ -106,6 +183,27 @@ class UserCompanyController extends AbstractController
         return new JsonResponse($jsonUserCompany, Response::HTTP_CREATED, ["Location" => $location], true);
    }
 
+
+    /**
+     * Cette méthode permet de modifier un UserCompany.
+     *
+     * @OA\Response(
+     *     response=200,
+     *     description="Modifier un UserCompany",
+     *     @OA\JsonContent(
+     *        type="array",
+     *        @OA\Items(ref=@Model(type=UserCompany::class))
+     *     )
+     * )
+     *
+     * @OA\RequestBody(
+     *     description="User to modify",
+     *     required=true,
+     *     @Model(type=UserCompany::class, groups={"createUserCompany"})
+     * )
+     *
+     * @OA\Tag(name="UserCompanies")
+     */
    #[Route('/api/usercompanies/{id}', name:"updateUserCompanies", methods:['PUT'])]
 
    public function updateUserCompanies(Request $request, SerializerInterface $serializer, UserCompany $currentUserCompany, EntityManagerInterface $em, CompanyRepository $companyRepository, ValidatorInterface $validator, TagAwareCacheInterface $cache): JsonResponse 

@@ -17,7 +17,7 @@ use OpenApi\Annotations as OA;
 class PhoneController extends AbstractController
 {
     /**
-     * Cette méthode permet de récupérer l'ensemble des UserCompany.
+     * Cette méthode permet de récupérer l'ensemble des phones.
      *
      * @OA\Response(
      *     response=200,
@@ -55,6 +55,23 @@ class PhoneController extends AbstractController
         return new JsonResponse($jsonPhoneList, Response::HTTP_OK, [], true);
     }
 
+
+    /**
+     * Cette méthode permet de récupérer un phone.
+     *
+     * @OA\Response(
+     *     response=200,
+     *     description="Retourne un phone",
+     *     @OA\JsonContent(
+     *        type="array",
+     *        @OA\Items(ref=@Model(type=Phone::class))
+     *     )
+     * )
+     *
+     *
+     * @OA\Tag(name="Phone")
+     *
+     */
     #[Route('/api/phones/{id}', name: 'detailPhone', methods: ['GET'])]
     public function getDetailBook(Phone $phone, SerializerInterface $serializer): JsonResponse 
     {

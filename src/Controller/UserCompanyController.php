@@ -6,6 +6,7 @@ use App\Entity\Company;
 use App\Entity\UserCompany;
 use App\Repository\CompanyRepository;
 use App\Repository\UserCompanyRepository;
+use Attribute;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -39,20 +40,36 @@ class UserCompanyController extends AbstractController
      *     )
      * )
      *
+     * @OA\Parameter(
+     *     name="page",
+     *     in="query",
+     *     description="La page que l'on veut récupérer",
+     *     @OA\Schema(type="int")
+     * )
+     *
+     * @OA\Parameter(
+     *     name="limit",
+     *     in="query",
+     *     description="Le nombre d'éléments que l'on veut récupérer",
+     *     @OA\Schema(type="int")
+     * )
      * @OA\Tag(name="UserCompanies")
      *
      */
     #[Route('/api/usercompanies', name: 'userCompanies', methods: ['GET'])]
     public function getUserList(UserCompanyRepository $userCompanyRepository, SerializerInterface $serializer, Request $request, TagAwareCacheInterface $cache): JsonResponse
     {
-
-        $idCache = "getUserList";
+        $page = $request->get('page', 1);
+        $limit = $request->get('limit', 3);
+        $idCache = "getUserList-" . $page . "-" . $limit;
         
-        $jsonUserCompany = $cache->get($idCache, function (ItemInterface $item) use ($userCompanyRepository, $serializer) {
-            echo("L'ÉLÉMENT N'EST PAS ENCORE EN CACHE \n");
+        $jsonUserCompany = $cache->get($idCache, function (ItemInterface $item) use ($userCompanyRepository, $serializer, $page, $limit) {
+            
+            //echo("L'ÉLÉMENT N'EST PAS ENCORE EN CACHE \n");
             $connectedCompany = $this->getUser();
             $item->tag("userCompanyCache");
-            $UserCompanyList = $userCompanyRepository->findBy(['company' => $connectedCompany]);
+            
+            $UserCompanyList = $userCompanyRepository->findBy(['company' => $connectedCompany],null, $limit, $page);
             $context = SerializationContext::create()->setGroups(['getUserCompany']);
             return $serializer->serialize($UserCompanyList, 'json', $context);
         });
@@ -211,17 +228,13 @@ class UserCompanyController extends AbstractController
         $newUserCompany = $serializer->deserialize($request->getContent(), UserCompany::class, 'json');
         $currentUserCompany->setLastname($newUserCompany->getLastname());
         $currentUserCompany->setFirstname($newUserCompany->getFirstname());
+        
 
         // On vérifie les erreurs
         $errors = $validator->validate($currentUserCompany);
         if ($errors->count() > 0) {
             return new JsonResponse($serializer->serialize($errors, 'json'), JsonResponse::HTTP_BAD_REQUEST, [], true);
         }
-
-        $content = $request->toArray();
-        $idCompany = $content['idCompany'] ?? -1;
-    
-        $currentUserCompany->setCompany($companyRepository->find($idCompany));
 
         $em->persist($currentUserCompany);
         $em->flush();

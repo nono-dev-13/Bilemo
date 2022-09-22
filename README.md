@@ -1,5 +1,4 @@
-# P6-Snowtrick
-
+# P7-Bilemo
 Projet 7 de mon parcours Développeur d'application PHP/Symfony chez OpenClassrooms.
 Création d'une API via Symfony.
 
